@@ -28,6 +28,7 @@ def get_track_from_playlist_item(item):
 
 
 def extract_track_ids_from_playlist(playlist):
+    playlist = sp.playlist(playlist)
     playlist_items = playlist['tracks']['items']
     return list(map(get_track_from_playlist_item, playlist_items))
 
@@ -35,14 +36,13 @@ def extract_track_ids_from_playlist(playlist):
 @app.route('/splice', methods=['POST'])
 def playlists():
     record = json.loads(request.data)
-    playlist_id = record['playlist']
-    print('Splicing playlist {}'.format(playlist_id))
+    playlist_ids = record['playlists']
+    print('Splicing playlists {}'.format(playlist_ids))
 
-    playlist = sp.playlist(playlist_id)
-    tracks = extract_track_ids_from_playlist(playlist)
-    print('Playlist contains {} tracks {}'.format(len(tracks), tracks))
+    playlist_tracks = map(extract_track_ids_from_playlist, playlist_ids)
+    print(playlist_tracks)
 
-    return playlist
+    return '200'
 
 
 if __name__ == '__main__':
