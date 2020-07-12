@@ -1,5 +1,5 @@
 /env/
 .idea/
 *.log
-*.cfg
-.cache-*
+.cache
+flask_session/
