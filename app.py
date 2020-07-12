@@ -1,45 +1,48 @@
+import json
 import os
-from flask import Flask, session, request, redirect
-from flask_session import Session
+
 import spotipy
+from flask import Flask, request, redirect
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.urandom(64)
 app.config['SESSION_TYPE'] = 'filesystem'
 
-Session(app)
-
 auth_manager = spotipy.oauth2.SpotifyOAuth(cache_path='.cache')
-spotify = spotipy.Spotify(auth_manager=auth_manager)
+sp = spotipy.Spotify(auth_manager=auth_manager)
+print(auth_manager.get_authorize_url())
 
 
 @app.route('/')
 def index():
-    if request.args.get("code"):
-        session['token_info'] = auth_manager.get_access_token(request.args["code"])
+    if request.args.get('code'):
+        code = request.args['code']
+        auth_manager.get_access_token(code)
         return redirect('/')
 
-    if not session.get('token_info'):
-        auth_url = auth_manager.get_authorize_url()
-        return f'<h2><a href="{auth_url}">Sign in</a></h2>'
-
-    return f'<h2>Hi {spotify.me()["display_name"]}, ' \
-           f'<small><a href="/sign_out">[sign out]<a/></small></h2>' \
-           f'<a href="/playlists">my playlists</a>'
+    return f'{sp.me()["display_name"]}'
 
 
-@app.route('/sign_out')
-def sign_out():
-    session.clear()
-    return redirect('/')
+def get_track_from_playlist_item(item):
+    return item['track']['id']
 
 
-@app.route('/playlists')
+def extract_track_ids_from_playlist(playlist):
+    playlist_items = playlist['tracks']['items']
+    return list(map(get_track_from_playlist_item, playlist_items))
+
+
+@app.route('/splice', methods=['POST'])
 def playlists():
-    if not session.get('token_info'):
-        return redirect('/')
-    else:
-        return spotify.current_user_playlists()
+    record = json.loads(request.data)
+    playlist_id = record['playlist']
+    print('Splicing playlist {}'.format(playlist_id))
+
+    playlist = sp.playlist(playlist_id)
+    tracks = extract_track_ids_from_playlist(playlist)
+    print('Playlist contains {} tracks {}'.format(len(tracks), tracks))
+
+    return playlist
 
 
 if __name__ == '__main__':
