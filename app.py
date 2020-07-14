@@ -1,5 +1,6 @@
 import json
 import os
+import random
 
 import spotipy
 from flask import Flask, request, redirect
@@ -27,20 +28,34 @@ def get_track_from_playlist_item(item):
     return item['track']['id']
 
 
-def extract_track_ids_from_playlist(playlist):
-    playlist = sp.playlist(playlist)
+def extract_track_ids_from_playlist(playlist_config):
+    playlist = sp.playlist(playlist_config['id'])
     playlist_items = playlist['tracks']['items']
-    return list(map(get_track_from_playlist_item, playlist_items))
+    playlist_tracks = list(map(get_track_from_playlist_item, playlist_items))
+    if playlist_config['shuffle']:
+        random.shuffle(playlist_tracks)
+    return playlist_tracks
+
+
+def merge_tracks(tracks_by_source_playlist):
+    tracks_by_source_playlist.sort(key=len)
+    tracks = []
+    shortest_playlist = len(tracks_by_source_playlist[0])
+    for i in range(shortest_playlist):
+        for playlist in tracks_by_source_playlist:
+            tracks.append(playlist[i])
+    return tracks
 
 
 @app.route('/splice', methods=['POST'])
 def playlists():
     record = json.loads(request.data)
-    playlist_ids = record['playlists']
-    print('Splicing playlists {}'.format(playlist_ids))
+    playlist_configs = record['playlists']
+    print('Splice playlists {}.'.format(playlist_configs))
 
-    playlist_tracks = map(extract_track_ids_from_playlist, playlist_ids)
-    print(playlist_tracks)
+    source_playlist_track_ids = list(map(extract_track_ids_from_playlist, playlist_configs))
+    new_playlist_track_ids = merge_tracks(source_playlist_track_ids)
+    print('Creating new playlist with tracks {}.'.format(new_playlist_track_ids))
 
     return '200'
 
