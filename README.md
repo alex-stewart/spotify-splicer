@@ -17,6 +17,7 @@ POST /splice
 
 ```
 {
+    "name" : "new playlist name",
     "playlists": [
         {
             "id": "37i9dQZF1DXbwQ8tw5iAdu",

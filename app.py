@@ -9,7 +9,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.urandom(64)
 app.config['SESSION_TYPE'] = 'filesystem'
 
-auth_manager = spotipy.oauth2.SpotifyOAuth(cache_path='.cache')
+auth_manager = spotipy.oauth2.SpotifyOAuth(cache_path='.cache', scope='playlist-modify-public')
 sp = spotipy.Spotify(auth_manager=auth_manager)
 print(auth_manager.get_authorize_url())
 
@@ -47,6 +47,22 @@ def merge_tracks(tracks_by_source_playlist):
     return tracks
 
 
+def add_tracks_to_playlist(username, playlist_id, track_list):
+    while track_list:
+        sp.user_playlist_add_tracks(username, playlist_id, track_list[:100])
+        del track_list[:100]
+
+
+def create_playlist_with_tracks(track_list, playlist_name):
+    username = sp.current_user()['id']
+    print('Creating playlist with name {} for user {}'.format(playlist_name, username))
+
+    new_playlist_id = sp.user_playlist_create(username, 'test')['id']
+    print('Created new playlist with id {}.'.format(new_playlist_id))
+
+    add_tracks_to_playlist(username, new_playlist_id, track_list)
+
+
 @app.route('/splice', methods=['POST'])
 def playlists():
     record = json.loads(request.data)
@@ -55,8 +71,10 @@ def playlists():
 
     source_playlist_track_ids = list(map(extract_track_ids_from_playlist, playlist_configs))
     new_playlist_track_ids = merge_tracks(source_playlist_track_ids)
-    print('Creating new playlist with tracks {}.'.format(new_playlist_track_ids))
+    print('Creating new playlist with {} tracks.'.format(len(new_playlist_track_ids)))
 
+    create_playlist_with_tracks(new_playlist_track_ids, record['name'])
+    print('Playlist splice complete.')
     return '200'
 
 
